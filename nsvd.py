@@ -21,3 +21,22 @@ if __name__ == '__main__':
   train = NSVD()
   print(train.targets.shape)
   print(train.data.shape)
+
+
+#With county
+class NSVD_COUNTY(Dataset):
+  def __init__(self):
+    self.df = pd.read_csv('./data/locations_county.csv').iloc[:3600]
+    self.targets = torch.tensor(self.df["fylkesnummer"].to_numpy()).int()
+    self.data = torch.tensor(np.array([self[idx] for idx in range(len(self.df))])).float()#torch.tensor([self[idx] for idx in range(5)])
+  def __len__(self):
+    return len(self.df)
+  def __getitem__(self, idx):
+    d = self.df.iloc[[idx]]
+    image = Image.open(os.path.join('./data/images', d['filename'].item())).resize((64, 64))
+    return np.asarray(image).transpose(2, 0, 1)
+
+if __name__ == '__main__':
+  train = NSVD()
+  print(train.targets.shape)
+  print(train.data.shape)
