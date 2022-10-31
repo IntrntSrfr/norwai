@@ -11,24 +11,25 @@ class ConvModule(nn.Module):
     x = self.norm(self.conv(x))
     return torch.relu(x)
 
-class NSVDModel(nn.Module):
-  def __init__(self) -> None:
-    super(NSVDModel, self).__init__()
-    self.pool = nn.MaxPool2d(2)
-    self.conv1 = ConvModule(3, 64)
-    self.conv2 = ConvModule(64, 128)
-    self.conv3 = ConvModule(128, 256)
-    self.l1 = nn.Linear(256*16*16, 1024)
-    self.l2 = nn.Linear(1024, 11)
-    
-  def forward(self, x):
-    x = self.pool(self.conv1(x)) # 128 -> 64
-    x = self.pool(self.conv2(x)) # 64 -> 32
-    x = self.pool(self.conv3(x)) # 32 -> 16
-    x = x.reshape(-1, 256*16*16)
-    x = torch.relu(self.l1(x))
-    x = self.l2(x)
-    return torch.log_softmax(x, dim=1)
+class CNN(nn.Module):
+    def __init__(self) -> None:
+        super(CNN, self).__init__()
+        self.pool = nn.MaxPool2d(2)
+        self.conv1 = ConvModule(3, 64)
+        self.conv2 = ConvModule(64, 128)
+        self.conv3 = ConvModule(128, 256)
+        self.l1 = nn.Linear(256*16*16, 1024)
+        self.l2 = nn.Linear(1024, 11)
+        
+    def forward(self, x):
+        x = self.pool(self.conv1(x)) # 128 -> 64
+        x = self.pool(self.conv2(x)) # 64 -> 32
+        x = self.pool(self.conv3(x)) # 32 -> 16
+        x = x.reshape(-1, 256*16*16)
+        x = torch.relu(self.l1(x))
+        x = self.l2(x)
+        return torch.log_softmax(x, dim=1)
+
 
 if __name__ == '__main__':
   from nsvd import NSVD_COUNTY
@@ -45,8 +46,7 @@ if __name__ == '__main__':
   mean = train_inputs.mean()
   std = train_inputs.std()
   train_inputs = (train_inputs - mean) / std
-  print(mean)
-  print(std)
+
   # create batches - ideally this should be a dataloader
   batch_size = 36
   train_input_batches = torch.split(train_inputs, batch_size)
@@ -56,21 +56,21 @@ if __name__ == '__main__':
   print("train target batch size:", train_target_batches[0].shape)
   #print(train_targets)
 
-  model = NSVDModel()
+  model = CNN()
   model.to(device)
 
-  loss_fn = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+  loss_fn = nn.NLLLoss()
+  optimizer = torch.optim.Adam(model.parameters(), lr=0.000001)
 
-  epochs = 20
+  epochs = 200
   for epoch in range(epochs):
     epoch_loss = 0
-    for batch in (pbar := tqdm(range(len(train_input_batches)), ascii=True)):
-      y = model(train_input_batches[batch])
-      loss = loss_fn(y, train_target_batches[batch])
-      loss.backward()
-      optimizer.step()
-      optimizer.zero_grad()
-      epoch_loss += loss
-      pbar.set_description("epoch: {}; loss: {:.5f}".format(epoch, epoch_loss/(batch+1)))
+    for batch in (pbar := tqdm(range(1), ascii=True)): #len(train_input_batches)
+        y = model(train_input_batches[batch])
+        loss = loss_fn(y, train_target_batches[batch])
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        epoch_loss += loss
+        pbar.set_description("epoch: {}; loss: {:.5f}".format(epoch, epoch_loss/(batch+1)))
   torch.save(model, './data/model_classification')
