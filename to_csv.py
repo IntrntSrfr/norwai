@@ -10,5 +10,6 @@ df = pd.read_json('./data/locations_county.json')
 df['filename'] = images
 print(df.iloc[:10])
 df = df[df['filename'].isin(bad_images) == False]
+df = df.dropna()
 print(df.iloc[:10])
 df.to_csv('./data/locations_county.csv', index=False)
