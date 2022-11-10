@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hell</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.2/dist/leaflet.css"
+    integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.2/dist/leaflet.js"
+    integrity="sha256-o9N1jGDZrf5tS+Ft4gbIK7mYMipq9lqpVJ91xHSyKhg=" crossorigin=""></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+
+    .map-container {
+      position: relative;
+    }
+
+    .crack {
+      position: absolute;
+      height: 300px;
+      width: 300px;
+      background-color: green;
+      top: calc(50% - 150px);
+      left: calc(50% - 150px);
+      z-index: 500;
+      opacity: 0.5;
+      border-radius: 50%;
+    }
+
+    .crack-hand {
+      position: absolute;
+      height: 150px;
+      width: 6px;
+      top: calc(50% - 150px);
+      left: calc(50% - 3px);
+      background-color: blue;
+      z-index: 499;
+      transform: rotate(0deg);
+      transform-origin: bottom;
+    }
+
+    .crack-info {
+      position: absolute;
+      top: calc(50% - 150px);
+      left: calc(50% - 150px);
+      z-index: 499;
+    }
+
+    .info {
+      text-align: center;
+      width: 200px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="map-container">
+    <div id="map" style="height: 600px; width: 600px; margin: 0 auto;"></div>
+    <div class="crack-info">Angle: 0&deg</div>
+    <div class="crack" onclick="weed(event)" onmousemove="rotateThing(event)"></div>
+    <div class="crack-hand"></div>
+  </div>
+  <div class="info">
+    <button onclick="saveFile()">save</button>
+    <button onclick="goNext()">go next</button>
+    <input type="number" id="idx" onchange="updateIndex(parseInt(event.target.value))">
+    <p id="idx-text">current index: 0</p>
+  </div>
+  <script>
+    let map = L.map('map', {
+        zoomControl: false,
+        scrollWheelZoom: false,
+        dragging: false
+      })
+      .setView([64.9701, 13.509217], 4)
+
+    const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    let index = 0
+    let lol = []
+    const getData = () => {
+      return fetch('data/clean_coords.json', {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          }
+        })
+        .then(res => res.json())
+    }
+
+    window.onload = async () => {
+      lol = await getData()
+      map.setView([lol[0].lat, lol[0].lng], 19)
+      circle = L.circle([lol[0].lat, lol[0].lng], {
+        color: 'red',
+        radius: 10
+      }).addTo(map)
+      hand = document.getElementsByClassName('crack-hand')[0]
+      angleText = document.getElementsByClassName('crack-info')[0]
+      idxText = document.getElementById('idx-text')
+    }
+
+    document.onkeydown = (e) => {
+      if (e.key == 'q') {
+        goNext()
+      }
+    }
+
+    const updateIndex = (newIndex) => {
+      index = newIndex
+      idxText.innerHTML = 'current index: ' + index
+      map.setView([lol[index].lat, lol[index].lng], 19)
+      circle.setLatLng([lol[index].lat, lol[index].lng])
+    }
+
+    const goBack = () => {
+      updateIndex(index - 1)
+    }
+
+    const goNext = () => {
+      updateIndex(index + 1)
+    }
+
+    const getDeg = (x, y) => {
+      return Math.round(Math.atan2(y, x) * 180 / Math.PI)
+    }
+
+    const weed = (e) => {
+      let deg = getDeg(e.offsetX - 150, e.offsetY - 150) + 90
+      deg = deg < 0 ? deg + 360 : deg
+      lol[index].angle = deg
+
+      goNext()
+    }
+
+    const rotateThing = (e) => {
+      let deg = getDeg(e.offsetX - 150, e.offsetY - 150) + 90
+      hand.style.transform = `rotate(${deg}deg)`;
+      deg = deg < 0 ? deg + 360 : deg
+      angleText.innerHTML = 'Angle: ' + deg + '&deg'
+    }
+
+    const saveFile = () => {
+      const file = new File([JSON.stringify(lol)], 'deg_clean_coords.json', {
+        type: 'application/json'
+      })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(file)
+
+      link.href = url
+      link.download = file.name
+      document.body.appendChild(link)
+      link.click()
+
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    }
+  </script>
+</body>
+
+</html>
