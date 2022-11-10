@@ -31,7 +31,6 @@ class NSVDModel(nn.Module):
     x = torch.relu(self.l1(x))
     x = self.l2(x)
     return x
-    #return torch.log_softmax(x, dim=1)
 
 if __name__ == '__main__':
   from torch.utils.data import DataLoader
@@ -43,7 +42,7 @@ if __name__ == '__main__':
   print("using device:", device)
 
   tf = transforms.Compose([
-    transforms.Resize((128,128)),
+    transforms.Resize((64,64)),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -54,15 +53,15 @@ if __name__ == '__main__':
   test = NSVD2('./data', train=False, transforms=tf)
   test_ldr = DataLoader(test, batch_size=26, shuffle=True, num_workers=4)
 
-  model = NSVDModel()
-  #model = models.vgg19(progress=False)
-  #model = nn.Sequential(
-  #  model, nn.Linear(1000, 11)
-  #)
+  #model = NSVDModel()
+  model = models.vgg11_bn(progress=False, weights=models.VGG11_BN_Weights.IMAGENET1K_V1)
+  for i, param in enumerate(model.features.parameters()):
+    param.requires_grad = False
+  model.classifier[6] = nn.Linear(4096, 11)
   model.to(device)
 
   loss_fn = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+  optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
   #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.87)
 
   losses = []
@@ -71,9 +70,9 @@ if __name__ == '__main__':
   epochs = 5
   for epoch in range(epochs):
     epoch_loss = 0
-    pbar = trange(len(train_ldr) + len(test_ldr), ascii=True)
+    pbar = trange(len(train_ldr), ascii=True)
     for batch_idx, (batch, labels) in enumerate(train_ldr):
-      batch, labels = batch.cuda(), labels.cuda()
+      batch, labels = batch.to(device), labels.to(device)
       y = model(batch)
       loss = loss_fn(y, labels)
       loss.backward()
@@ -81,19 +80,21 @@ if __name__ == '__main__':
       optimizer.zero_grad()
       epoch_loss += (loss/len(train_ldr)).item()
 
-      pbar.set_description("epoch: {:2d}; loss: {:.5f}".format(epoch, epoch_loss))
+      pbar.set_description("train: epoch: {:2d}; loss: {:.5f}".format(epoch, epoch_loss))
       pbar.update()
     losses.append(epoch_loss)
+    pbar.close()
     #scheduler.step()
 
+    pbar = trange(len(test_ldr), ascii=True)
     with torch.no_grad():
       epoch_acc = 0
       for batch_idx, (batch, labels) in enumerate(test_ldr):
-        batch, labels = batch.cuda(), labels.cuda()
+        batch, labels = batch.to(device), labels.to(device)
         y = model(batch)
         y = torch.argmax(torch.exp(y), dim=1)
         epoch_acc += (1-torch.count_nonzero(y-labels).item() / len(batch))/len(test_ldr)
-        pbar.set_description("epoch: {:2d}; loss: {:.5f}; acc: {:.5f}".format(epoch, epoch_loss, epoch_acc))
+        pbar.set_description("test:  epoch: {:2d};  acc: {:.5f}".format(epoch, epoch_acc))
         pbar.update()
     accs.append(epoch_acc)
     pbar.close()

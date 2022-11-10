@@ -58,9 +58,9 @@ class NSVD2(Dataset):
 class NSVD3(Dataset):
   def __init__(self, root, transforms=None, train=True) -> None:
     super(NSVD3, self).__init__()
-    self.path = pathlib.Path(root) / 'NSVD'# / ('train' if train else 'test')
+    self.path = pathlib.Path(root) / 'NSVD' 
     self.df = pd.read_csv(self.path / 'data.csv')
-    self.files = list(self.path.glob('*/*.jpg'))
+    self.files = list((self.path / ('train' if train else 'test')).glob('*.jpg'))
 
     self.transforms = transforms
   
@@ -70,6 +70,8 @@ class NSVD3(Dataset):
   def __getitem__(self, index):
     f = self.files[index]
     label = self.df.loc[self.df['filename'] == f.name].to_dict(orient='records')[0]['county']
+    if label > 1:
+      label -= 1 # subtract 1 of above 1, because oslo was removed, which had index 1
     img = Image.open(f)
 
     if self.transforms:
