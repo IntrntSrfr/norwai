@@ -72,8 +72,6 @@ class NSVD3(Dataset):
   def __getitem__(self, index):
     f = self.files[index]
     label = self.df.loc[self.df['filename'] == f.name].to_dict(orient='records')[0]['county']
-    if label > 1:
-      label -= 1 # subtract 1 of above 1, because oslo was removed, which had index 1
     img = Image.open(f)
 
     if self.transforms:

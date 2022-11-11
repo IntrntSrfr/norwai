@@ -35,7 +35,7 @@ class NSVDModel(nn.Module):
 if __name__ == '__main__':
   from torch.utils.data import DataLoader
   from torchvision import transforms, datasets, models
-  from nsvd import NSVD2
+  from nsvd import NSVD3
   from tqdm import tqdm, trange
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,10 +48,10 @@ if __name__ == '__main__':
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
   ])
 
-  train = NSVD2('./data', transforms=tf)
-  train_ldr = DataLoader(train, batch_size=38, shuffle=True, num_workers=4)
-  test = NSVD2('./data', train=False, transforms=tf)
-  test_ldr = DataLoader(test, batch_size=26, shuffle=True, num_workers=4)
+  train = NSVD3('./data', transforms=tf)
+  train_ldr = DataLoader(train, batch_size=32, shuffle=True, num_workers=4)
+  test = NSVD3('./data', train=False, transforms=tf)
+  test_ldr = DataLoader(test, batch_size=32, shuffle=True, num_workers=4)
 
   #model = NSVDModel()
   model = models.vgg11_bn(progress=False, weights=models.VGG11_BN_Weights.IMAGENET1K_V1)
@@ -78,7 +78,7 @@ if __name__ == '__main__':
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()
-      epoch_loss += (loss/len(train_ldr)).item()
+      epoch_loss += loss.item()/len(train_ldr)
 
       pbar.set_description("train: epoch: {:2d}; loss: {:.5f}".format(epoch, epoch_loss))
       pbar.update()
@@ -109,4 +109,3 @@ if __name__ == '__main__':
   ax2.plot(range(len(accs)), accs, label='accuracy')
   ax2.legend()
   plt.show()
-
