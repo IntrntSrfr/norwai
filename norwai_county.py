@@ -36,9 +36,9 @@ class NSVDModel(nn.Module):
 
 if __name__ == '__main__':
   from torch.utils.data import DataLoader
-  from torchvision import transforms, datasets, models
+  from torchvision import transforms, models
   from nsvd import NSVD3
-  from tqdm import tqdm, trange
+  from tqdm import trange
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
   print("using device:", device)
@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
   epochs = 10
   for epoch in range(epochs):
-    print("epoch: {}; lr: {}".format( epoch, scheduler.get_last_lr()[0]))
+    print("epoch: {}; lr: {}".format(epoch, scheduler.get_last_lr()[0]))
     epoch_loss = 0
     pbar = trange(len(train_ldr), ascii=True)
     for batch_idx, (batch, labels) in enumerate(train_ldr):
@@ -106,6 +106,11 @@ if __name__ == '__main__':
     pbar.close()
   torch.save(model, './data/model_classification')
 
+  import pandas as pd
+  df = pd.DataFrame({'accuracy':accs, 'losses':losses})
+  df.to_csv('./data/metrics/nsvd.csv')
+
+''' 
   import matplotlib.pyplot as plt  
   fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15,5))
   fig.set_facecolor('white')
@@ -115,3 +120,4 @@ if __name__ == '__main__':
   ax2.plot(range(len(accs)), accs, label='accuracy')
   ax2.legend()
   plt.show()
+   '''
