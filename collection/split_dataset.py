@@ -3,8 +3,11 @@ import pandas as pd
 import shutil
 import pathlib
 from tqdm import tqdm
+import os
 
 df = pd.read_csv('./data/data.csv')
+files = os.listdir('./data/images')
+df = df[df['filename'].isin(files)]
 
 tests = np.random.choice(range(len(df)), int(len(df)*.15), replace=False)
 test_df = df.loc[df.index.isin(tests)]
