@@ -14,24 +14,39 @@ class ConvModule(nn.Module):
 class NSVDModel(nn.Module):
   def __init__(self) -> None:
     super(NSVDModel, self).__init__()
-    self.pool = nn.MaxPool2d(2)
-    self.conv1 = ConvModule(3, 64)
-    self.conv2 = ConvModule(64, 128)
-    self.conv3 = ConvModule(128, 256)
-    self.conv4 = ConvModule(256, 256)
-    self.conv5 = ConvModule(256, 256)
-    self.l1 = nn.Linear(256*6*6, 512)
-    self.l2 = nn.Linear(512, 10)
     
-  def forward(self, x):
-    x = self.pool(self.conv1(x)) # 64 -> 32
-    x = self.pool(self.conv2(x)) # 32 -> 16
-    x = self.pool(self.conv3(x)) # 16 -> 8
-    x = self.pool(self.conv4(x)) # 16 -> 8
-    x = self.pool(self.conv5(x)) # 16 -> 8
-    x = x.reshape(-1, 256*6*6)
-    x = torch.relu(self.l1(x))
-    x = self.l2(x)
+    self.features = nn.Sequential(
+      ConvModule(3, 64),
+      ConvModule(64, 128),
+      nn.MaxPool2d(2), # 512 -> 256
+      ConvModule(128, 256),
+      ConvModule(256, 512),
+      nn.MaxPool2d(2), # 256 -> 128
+      ConvModule(512, 512),
+      ConvModule(512, 512),
+      nn.MaxPool2d(2), # 128 -> 64
+      ConvModule(512, 512),
+      ConvModule(512, 512),
+      nn.MaxPool2d(2), # 64 -> 32
+      ConvModule(512, 512),
+      ConvModule(512, 512),
+      nn.MaxPool2d(2), # 32 -> 16
+      ConvModule(512, 512),
+      ConvModule(512, 512),
+      nn.MaxPool2d(2), # 16 -> 8
+    )
+    self.classifier = nn.Sequential(
+      nn.Linear(512*8*8, 1024),
+      nn.ReLU(True),
+      nn.Linear(1024, 1024),
+      nn.ReLU(True),
+      nn.Linear(1024, 10),
+    )
+    
+  def forward(self, x: torch.Tensor):
+    x = self.features(x)
+    x = torch.flatten(x, 1)
+    x = self.classifier(x)
     return x
 
 if __name__ == '__main__':
@@ -44,7 +59,7 @@ if __name__ == '__main__':
   print("using device:", device)
 
   tf = transforms.Compose([
-    transforms.Resize((192,192)),
+    transforms.Resize((512, 512)),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -109,15 +124,3 @@ if __name__ == '__main__':
   import pandas as pd
   df = pd.DataFrame({'accuracy':accs, 'losses':losses})
   df.to_csv('./data/metrics/nsvd.csv')
-
-''' 
-  import matplotlib.pyplot as plt  
-  fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15,5))
-  fig.set_facecolor('white')
-  ax1.set_yscale('log')
-  ax1.plot(range(len(losses)), losses, label='loss')
-  ax1.legend()
-  ax2.plot(range(len(accs)), accs, label='accuracy')
-  ax2.legend()
-  plt.show()
-   '''
