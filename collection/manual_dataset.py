@@ -35,4 +35,3 @@ while (status):
  
 # deactivates the pygame library
 pygame.quit()
-

@@ -78,6 +78,34 @@ class NSVD3(Dataset):
       img = self.transforms(img)
     return img, label
 
+class NSVD4(Dataset):
+  def __init__(self, root, label: str, transforms=None, train=True):
+    super(NSVD4, self).__init__()
+
+    if label not in ['county', 'coords']: # add this later ", 'zone']:"
+      raise ValueError('label must be one in ["county", "coords", "zone"]')
+    self.label = label
+    
+    self.path = pathlib.Path(root) / 'NSVD' 
+    self.df = pd.read_csv(self.path / 'data.csv')
+    self.files = list((self.path / ('train' if train else 'test')).glob('*.jpg'))
+
+    self.transforms = transforms
+  
+  def __len__(self):
+    return len(self.files)
+
+  def __getitem__(self, index):
+    f = self.files[index]
+    if self.label == 'coords':
+      label = self.df.loc[self.df['filename'] == f.name][['lat', 'lng']].to_numpy()[0]
+    else:
+      label = self.df.loc[self.df['filename'] == f.name][[self.label]].to_numpy()[0][0]
+    img = Image.open(f)
+    if self.transforms:
+      img = self.transforms(img)
+    return img, label
+
 
 def plot_img(t):
   t = t.numpy().transpose((1,2,0))
@@ -94,7 +122,7 @@ if __name__ == '__main__':
     transforms.ToTensor(),
   ])
 
-  d = NSVD3('data', transforms=tf)
+  d = NSVD4('data', "coords", transforms=tf)
   
   img,label = d[random.randint(0, len(d)-1)]
   print(label)
