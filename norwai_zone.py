@@ -122,14 +122,15 @@ if __name__ == '__main__':
   """
   model.to(device)
   loss_fn = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
-  #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.87)
+  optimizer = torch.optim.Adam(model.parameters(), lr=0.00001, weight_decay=1e-4)
+  scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.95)
 
   losses = []
   accs = []
 
-  epochs = 5
+  epochs = 10
   for epoch in range(epochs):
+    print("epoch: {}; lr: {}".format(epoch, scheduler.get_last_lr()[0]))
     epoch_loss = 0
     pbar = trange(len(train_ldr), ascii=True)
     for batch_idx, (batch, labels) in enumerate(train_ldr):
@@ -141,11 +142,11 @@ if __name__ == '__main__':
       optimizer.zero_grad()
       epoch_loss += loss.item()/len(train_ldr)
 
-      pbar.set_description("train: epoch: {:2d}; loss: {:.5f}".format(epoch, epoch_loss))
+      pbar.set_description("    loss: {:.5f}".format(epoch_loss))
       pbar.update()
     losses.append(epoch_loss)
     pbar.close()
-    #scheduler.step()
+    scheduler.step()
 
     pbar = trange(len(test_ldr), ascii=True)
     with torch.no_grad():
