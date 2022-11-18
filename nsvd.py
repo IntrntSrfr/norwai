@@ -131,7 +131,7 @@ class NSVD4(Dataset):
     
     if self.return_coords:
       return img, label, row[['lat', 'lng']].to_numpy()[0]
-    return img, label, None
+    return img, label, -1
 
 
 def plot_img(t):

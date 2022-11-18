@@ -53,7 +53,7 @@ class NSVDModel(nn.Module):
 if __name__ == '__main__':
   from torch.utils.data import DataLoader
   from torchvision import transforms, models
-  from nsvd import NSVD3
+  from nsvd import NSVD4
   from tqdm import tqdm
   import pandas as pd
 
@@ -67,9 +67,9 @@ if __name__ == '__main__':
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
   ])
 
-  train = NSVD3('./data', transforms=tf)
+  train = NSVD4('./data', 'county', False, transforms=tf)
   train_ldr = DataLoader(train, batch_size=32, shuffle=True, num_workers=4)
-  test = NSVD3('./data', train=False, transforms=tf)
+  test = NSVD4('./data', 'county', False, train=False, transforms=tf)
   test_ldr = DataLoader(test, batch_size=32, shuffle=True, num_workers=4)
 
   print("training data: {} images, {} batches".format(len(train), len(train_ldr)))
