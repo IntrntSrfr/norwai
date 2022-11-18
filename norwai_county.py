@@ -35,6 +35,7 @@ class NSVDModel(nn.Module):
       ConvModule(512, 512),
       nn.MaxPool2d(2), # 16 -> 8
     )
+    
     self.classifier = nn.Sequential(
       nn.Linear(512*8*8, 1024),
       nn.ReLU(True),
@@ -53,7 +54,8 @@ if __name__ == '__main__':
   from torch.utils.data import DataLoader
   from torchvision import transforms, models
   from nsvd import NSVD3
-  from tqdm import trange
+  from tqdm import tqdm
+  import pandas as pd
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
   print("using device:", device)
@@ -73,12 +75,14 @@ if __name__ == '__main__':
   print("training data: {} images, {} batches".format(len(train), len(train_ldr)))
   print("testing data: {} images, {} batches".format(len(test), len(test_ldr)))
 
-  model = NSVDModel()
-  #model = models.vgg19_bn(progress=False, weights=models.VGG19_BN_Weights.IMAGENET1K_V1)
+  #model = NSVDModel()
+  model = models.resnet152(progress=False, weights=models.ResNet152_Weights.IMAGENET1K_V1)
+  model.fc = nn.Linear(512, 10)
   #for i, param in enumerate(model.features.parameters()):
   #  param.requires_grad = False
   #model.classifier[6] = nn.Linear(4096, 10)
   model.to(device)
+  model_name = "resnet152_512_10"
 
   loss_fn = nn.CrossEntropyLoss()
   optimizer = torch.optim.Adam(model.parameters(), lr=0.00001, weight_decay=1e-4)
@@ -91,36 +95,29 @@ if __name__ == '__main__':
   for epoch in range(epochs):
     print("epoch: {}; lr: {}".format(epoch, scheduler.get_last_lr()[0]))
     epoch_loss = 0
-    pbar = trange(len(train_ldr), ascii=True)
-    for batch_idx, (batch, labels) in enumerate(train_ldr):
+    for batch_idx, (batch, labels) in (pbar := tqdm(enumerate(train_ldr), total=len(train_ldr))):
       batch, labels = batch.to(device), labels.to(device)
       y = model(batch)
       loss = loss_fn(y, labels)
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()
-      epoch_loss += loss.item()/len(train_ldr)
+      epoch_loss += loss.item() / len(train_ldr)
 
       pbar.set_description("    loss: {:.5f}".format(epoch_loss))
-      pbar.update()
     losses.append(epoch_loss)
-    pbar.close()
     scheduler.step()
 
-    pbar = trange(len(test_ldr), ascii=True)
     with torch.no_grad():
       epoch_acc = 0
-      for batch_idx, (batch, labels) in enumerate(test_ldr):
+      for batch_idx, (batch, labels) in (pbar := tqdm(enumerate(test_ldr), total=len(test_ldr))):
         batch, labels = batch.to(device), labels.to(device)
         y = model(batch)
         y = torch.argmax(torch.exp(y), dim=1)
-        epoch_acc += (1-torch.count_nonzero(y-labels).item() / len(batch))/len(test_ldr)
+        epoch_acc += (1 - torch.count_nonzero(y - labels).item() / len(batch)) / len(test_ldr)
         pbar.set_description("    acc: {:.5f}".format(epoch_acc))
-        pbar.update()
     accs.append(epoch_acc)
-    pbar.close()
-  torch.save(model, './data/model_classification')
 
-  import pandas as pd
-  df = pd.DataFrame({'accuracy':accs, 'losses':losses})
-  df.to_csv('./data/metrics/nsvd.csv')
+  torch.save(model, './data/trained_models/county/{}'.format(model_name))
+  df = pd.DataFrame({'accuracy': accs, 'losses': losses})
+  df.to_csv('./data/trained_models/county/metrics/{}.csv'.format(model_name), index=False)
