@@ -4,3 +4,4 @@ data
 venv
 env
 .env
+.idea
