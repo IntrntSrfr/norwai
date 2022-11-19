@@ -23,15 +23,15 @@ class NSVDModel(nn.Module):
       nn.MaxPool2d(2), # 64 -> 32
       ConvModule(128, 256),
       nn.MaxPool2d(2), # 32 -> 16
-      #ConvModule(256, 256),
-      #nn.MaxPool2d(2), # 16 -> 8
+      ConvModule(256, 256),
+      nn.MaxPool2d(2), # 16 -> 8
     )
     
     self.classifier = nn.Sequential(
       #nn.Linear(512*8*8, 1024),
       #nn.ReLU(True),
       nn.Linear(256*8*8, 512),
-      nn.BatchNorm1d(512),
+      #nn.BatchNorm1d(512),
       nn.ReLU(True),
       nn.Linear(512, 2),
     )
@@ -64,7 +64,7 @@ if __name__ == '__main__':
   print("using device:", device)
 
   tf = transforms.Compose([
-    transforms.Resize((64, 64)),
+    transforms.Resize((128, 128)),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -72,16 +72,23 @@ if __name__ == '__main__':
 
   train = NSVD4('./data', "coords", False, transforms=tf)
   train_ldr = DataLoader(train, batch_size=32, shuffle=True, num_workers=4)
-  test = NSVD4('./data', "coords", False, train=False, transforms=tf)
-  test_ldr = DataLoader(test, batch_size=32, shuffle=True, num_workers=4)
+
+  #test = NSVD4('./data', "coords", False, train=False, transforms=tf)
+  #test_ldr = DataLoader(test, batch_size=32, shuffle=True, num_workers=4)
 
   print("training data: {} images, {} batches".format(len(train), len(train_ldr)))
-  print("test data: {} images, {} batches".format(len(test), len(test_ldr)))
+  #print("test data: {} images, {} batches".format(len(test), len(test_ldr)))
 
-  model = NSVDModel()
+  model = NSVDModel()  
+  #model = models.resnet152(progress=False, weights=models.ResNet152_Weights.IMAGENET1K_V1)
+  #model.fc = nn.Linear(512, 2)
+  #for i, param in enumerate(model.features.parameters()):
+  #  param.requires_grad = False
+  #model.classifier[6] = nn.Linear(4096, 10)
   model = nn.DataParallel(model)
   model.to(device)
-  model_name = 'nsvd_128_10'
+  #model_name = "resnet152_512_10"
+  model_name = "nsvd_128_5"
 
   loss_fn = haversine
   #loss_fn = nn.MSELoss()
