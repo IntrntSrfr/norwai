@@ -31,18 +31,13 @@ train_data = NSVD4('./data', True,  "coords", False, transforms=tf_train)
 test_data = NSVD4('./data', False,  "coords", False, transforms=tf_test)
 
 def train_model():
-  #run = wandb.init(name='distance')
-  #print("new run with configs:", wandb.config)
+  run = wandb.init(name='distance')
+  print("new run with configs:", wandb.config)
 
-  #epochs = wandb.config.epochs
-  #lr = wandb.config.lr
-  #lr_decay = wandb.config.lr_decay
-  #batch_size = wandb.config.batch_size
-
-  epochs = 3
-  lr = 0.01
-  lr_decay = 0
-  batch_size = 32
+  epochs = wandb.config.epochs
+  lr = wandb.config.lr
+  lr_decay = wandb.config.lr_decay
+  batch_size = wandb.config.batch_size
 
   model = NSVDModel()
   model = nn.DataParallel(model)
@@ -85,15 +80,14 @@ def train_model():
         epoch_acc += loss.item()
         pbar.set_description("    acc: {:.5f}".format(epoch_acc / (batch_idx + 1)))
 
-    #wandb.log({
-    #  'epoch':epoch,
-    #  'train_loss': epoch_loss / len(train_ldr),
-    #  'test_loss': epoch_acc / len(test_ldr)
-    #})
+    wandb.log({
+      'epoch':epoch,
+      'train_loss': epoch_loss / len(train_ldr),
+      'test_loss': epoch_acc / len(test_ldr)
+    })
     
-    #losses.append(epoch_loss / len(train_ldr))
     scheduler.step()
-  #run.finish()
+  run.finish()
 
 if __name__ == '__main__':
   train_model()

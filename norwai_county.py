@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
   train = NSVD4('./data', True, 'county', False, transforms=tf)
   train_ldr = DataLoader(train, batch_size=32, shuffle=True, num_workers=4)
-  test = NSVD4('./data', False, 'county', False, train=False, transforms=tf)
+  test = NSVD4('./data', False, 'county', False, transforms=tf)
   test_ldr = DataLoader(test, batch_size=32, shuffle=True, num_workers=4)
 
   print("training data: {} images, {} batches".format(len(train), len(train_ldr)))
