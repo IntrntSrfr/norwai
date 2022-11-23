@@ -83,6 +83,9 @@ class NSVD_Boxes(Dataset):
     super(NSVD_Boxes, self).__init__()
     self.path = pathlib.Path(root) / 'NSVD' 
     self.df = pd.read_csv(self.path / 'data_boxes.csv')
+    self.df = self.df.groupby('box_index')
+    print(self.df.size().mean())
+    self.df = self.df.apply(lambda x: x.sample(int(self.df.size().mean()), replace=True).reset_index(drop=True))
     self.files = list((self.path / ('train' if train else 'test')).glob('*.jpg'))
     #Remove all files that are not in df
     self.files = [f for f in self.files if f.name in self.df['filename'].values]
