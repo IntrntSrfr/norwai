@@ -1,0 +1,16 @@
+entity: norwai
+project: norwai
+program: norwai_regression_train.py
+method: grid
+metric:
+  name: test_loss
+  goal: minimize
+parameters:
+  epochs:
+    values: [5, 15, 30]
+  lr:
+    values: [0.1, 0.01, 0.001]
+  lr_decay:
+    values: [0, 0.98, 0.95]
+  batch_size:
+    values: [32, 64, 128]

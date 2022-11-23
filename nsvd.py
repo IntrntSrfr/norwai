@@ -104,7 +104,7 @@ class NSVD_Boxes(Dataset):
     return img, label
 
 class NSVD4(Dataset):
-  def __init__(self, root, label, return_coords, transforms=None, train=True):
+  def __init__(self, root, train, label, return_coords, transforms=None):
     super(NSVD4, self).__init__()
 
     if label not in ['county', 'coords']: # add this later ", 'zone']:"
@@ -152,7 +152,7 @@ if __name__ == '__main__':
     transforms.ToTensor(),
   ])
 
-  d = NSVD4('data', "county", True, transforms=tf)
+  d = NSVD4('data', True, "county", True, transforms=tf)
 
   img, label, coords = d[random.randint(0, len(d)-1)]
   print(label)
