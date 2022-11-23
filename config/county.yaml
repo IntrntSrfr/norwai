@@ -1,0 +1,8 @@
+epochs:
+  value: 5
+lr:
+  value: 0.1
+lr_decay:
+  value: 0.95
+batch_size:
+  value: 32
