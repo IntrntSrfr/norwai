@@ -1,4 +1,4 @@
-import wandb 
+import wandb
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -6,8 +6,8 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from util import make_data_folders
-from norwai_regression import NSVDModel, Haversine
-from nsvd import NSVD
+from norwai_county import get_model
+from nsvd import NSVD_B, IDX2COUNTY
 
 make_data_folders()
 
@@ -27,19 +27,32 @@ tf_test = transforms.Compose([
   transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
-train_data = NSVD('./data', True,  "coords", False, transforms=tf_train)
-test_data = NSVD('./data', False,  "coords", False, transforms=tf_test)
+train_data = NSVD_B('./data', True,  "county", False, transforms=tf_train)
+test_data = NSVD_B('./data', False,  "county", False, transforms=tf_test)
+
+default_config = {
+  'architecture': 'EfficientNet',
+  'pretrained': True,
+  'dataset': 'balanced',
+  'epochs': 10,
+  'lr': 0.001,
+  'lr_decay': 0.95,
+  'batch_size': 32,
+}
 
 def train_model():
-  run = wandb.init(name='distance')
+  run = wandb.init(name='county', project='norwai', entity='norwai', config=default_config)
   print("new run with configs:", wandb.config)
 
+  architecture = wandb.config.architecture
+  pretrained = wandb.config.pretrained
   epochs = wandb.config.epochs
   lr = wandb.config.lr
   lr_decay = wandb.config.lr_decay
   batch_size = wandb.config.batch_size
 
-  model = NSVDModel()
+  model = get_model(architecture, 10, False, pretrained)
+  assert model is not None, "Input architecture is invalid"
   model = nn.DataParallel(model)
   model.to(device)
   
@@ -48,7 +61,7 @@ def train_model():
   print("training data: {} images, {} batches".format(len(train_data), len(train_ldr)))
   print("test data: {} images, {} batches".format(len(test_data), len(test_ldr)))
 
-  loss_fn = Haversine()
+  loss_fn = nn.CrossEntropyLoss()
   optimizer = torch.optim.Adam(model.parameters(), lr=lr)
   scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, 1)
   if lr_decay:
@@ -58,38 +71,56 @@ def train_model():
     print("epoch: {}; lr: {}".format(epoch, scheduler.get_last_lr()[0]))
     model.train()
     train_loss = 0
+    train_acc = 0
     for batch_idx, (batch, labels, _) in (pbar := tqdm(enumerate(train_ldr), total=len(train_ldr))):
-      batch, labels = batch.to(device), labels.to(device).float()
+      batch, labels = batch.to(device), labels.to(device)
       y = model(batch)
-      loss = loss_fn(y[:, 0], y[:, 1], labels[:, 0], labels[:, 1])
+      pred = torch.argmax(torch.exp(y), dim=1)
+      loss = loss_fn(y, labels)
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()
       train_loss += loss.item()
-      pbar.set_description("    loss: {:.2f}".format(train_loss / (batch_idx + 1)))
-
+      train_acc += (pred == labels).sum().item() / len(batch)
+      pbar.set_description("    loss: {:.3f}".format(train_loss / (batch_idx + 1)))
+    
+    truths = torch.tensor([]).to(device)
+    predictions = torch.tensor([]).to(device)
+    test_loss = 0
+    test_acc = 0
     with torch.no_grad():
-      model.eval()
-      test_loss = 0
       for batch_idx, (batch, labels, _) in (pbar := tqdm(enumerate(test_ldr), total=len(test_ldr))):
         batch, labels = batch.to(device), labels.to(device)
         y = model(batch)
-        loss = loss_fn(y[:, 0], y[:, 1], labels[:, 0], labels[:, 1])
+        pred = torch.argmax(torch.exp(y), dim=1)
+        loss = loss_fn(y, labels)
+        if epoch == epochs - 1:
+          truths = torch.cat((truths, labels))
+          predictions = torch.cat((predictions, pred))
         test_loss += loss.item()
-        pbar.set_description("    acc: {:.2f}".format(test_loss / (batch_idx + 1)))
+        test_acc += (pred == labels).sum().item() / len(batch)
+        pbar.set_description("    acc: {:.3f}".format(test_acc / (batch_idx + 1)))
+    
+    if epoch == epochs - 1:
+      cm = wandb.plot.confusion_matrix(
+        y_true=truths.flatten().cpu().detach().numpy(),
+        preds=predictions.flatten().cpu().detach().numpy(),
+        class_names=list(IDX2COUNTY.values())
+      )
+      wandb.log({'conf_mat':cm})
 
+    
     wandb.log({
       'epoch':epoch,
       'epoch_lr': scheduler.get_last_lr()[0],
       'train_loss': train_loss / len(train_ldr),
-      'test_loss': test_loss / len(test_ldr)
+      'train_acc': train_acc / len(train_ldr),
+      'test_loss': test_loss / len(test_ldr),
+      'test_acc': test_acc / len(test_ldr)
     })
-    
+
     scheduler.step()
   run.finish()
 
 if __name__ == '__main__':
   train_model()
-
-
-#wandb.agent(sweep_id, function=train_model)
