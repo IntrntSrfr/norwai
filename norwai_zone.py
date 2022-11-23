@@ -14,48 +14,75 @@ n_list = pd.read_csv('data/NSVD/n_list.csv')
 gps = Proj(init='epsg:4326')
 zone34N = Proj(init='epsg:23034')
 
+def weighted_centroid(points, weights):
+    res = points
+    while len(res) > 1:
+        new_res = []
+        new_weights = []
+        for i in range(0,len(res),2):
+            if i+1 == len(res):
+              continue
+            p1 = res[i]
+            p2 = res[i+1]
+            w1 = weights[i]
+            w2 = weights[i+1]
+            
+            vector = np.array(p2) - np.array(p1)
+            #length = np.linalg.norm(vector)
+            
+            percentage = w1 / (w1 + w2)
+            p = p1 + percentage*vector
+
+            new_res.append(p)
+            new_weights.append(w1 + w2)
+        res = new_res
+        weights = new_weights
+    return res
+
 def centroid(points):
-  #If list of strings
-  #Make list of string containing a float tuple into float tuples
   if type(points[0]) == str:
     points = [tuple(map(float, point[1:-1].split(','))) for point in points]
 
   x = [p[0] for p in points]
   y = [p[1] for p in points]
-  centroid = (sum(x) / len(points), sum(y) / len(points))
-  return centroid
-
-def distance_from_point(y, labels): 
+  return (sum(x) / len(points), sum(y) / len(points))
+  
+def distance_from_point(y, labels, amt = 3): 
+  #grad_fn = y.grad_fn
   dist = []
   BOX_INDEXES = [61, 18, 9, 35, 19, 43, 17, 44, 25, 62, 52, 27, 26, 10, 34, 60, 36]
+  #print(len(y))
   for i in range(len(y)):
     # Get the four best y values with in each batch
-    y_ = y[i].topk(1, dim=0)[1]
-    label_, lat, lng = labels["box_index"][i], labels["lat"][i], labels["lng"][i]
+    y_ = y[i].topk(amt, dim=0)[1]
+    lat, lng = labels["lat"][i], labels["lng"][i]
     # Get y_ to the cpu
     y_ = y_.cpu().numpy()
     # Get the box cords for each of the four best y values
-    box_cords = n_list.iloc[y_]
-    
+    box_cords = n_list.iloc[[BOX_INDEXES[y_[idx]] for idx in range(len(y_))]]
+  
     box_centers = []
-    for i, row in box_cords.iterrows():
-      box_centers.append(centroid([row['0'], row['1']]))
+    for _, row in box_cords.iterrows():
+      box_centers.append(centroid([row['1'], row['0']]))
     
-    estimated_point = centroid(box_centers)
+    #print(torch.softmax(y[i], dim=0).detach().cpu().numpy())
+    percentages =  torch.softmax(y[i], dim=0).detach().cpu().numpy()
+    #get percentage of each box selected
+    percentages = percentages[[y_[idx] for idx in range(len(y_))]]
+    #calculate new percentages so that they add up to 1
+    percentages = percentages / percentages.sum()
 
-    # Transform the center lat lng to zone34N
-    #actual_point = transform(gps, zone34N, lng, lat)
+    estimated_point = weighted_centroid(box_centers,percentages)[0]
+    #print(estimated_point)
+    esitmated_point = transform(zone34N, gps, estimated_point[0], estimated_point[1])
+    estimated_point = (esitmated_point[1], esitmated_point[0])
+    #y[i] = geopy.distance.distance(estimated_point, (lat, lng)).km
+    dist.append(geopy.distance.geodesic((lat, lng), estimated_point).km)
 
-    # Calculate the distance between the estimated point and the actual point
-    dist.append(geopy.distance.geodesic((lat, lng), transform(zone34N, gps, estimated_point[1], estimated_point[0])).km)
-
-  idx = dist.index(min(dist))
-  print(BOX_INDEXES[labels["box_index"][idx]], labels["lat"][idx], labels["lng"][idx], min(dist))
-
+  #res = torch.mean(torch.tensor(dist))#.to(device)
+  #res.grad_fn = grad_fn
   return dist
-
     
-
 class ConvModule(nn.Module):
   def __init__(self, in_features, out_features) -> None:
     super(ConvModule, self).__init__()
@@ -89,6 +116,8 @@ class NSVDModel(nn.Module):
     x = x.reshape(-1, 256*8*8*2)
     x = torch.relu(self.l1(x))
     x = self.l2(x)
+    #return torch.softmax(x, dim=1)
+
     return x
 
 if __name__ == '__main__':
@@ -121,14 +150,15 @@ if __name__ == '__main__':
   model.classifier[6] = nn.Linear(4096, 11)
   """
   model.to(device)
+  #loss_fn = nn.CrossEntropyLoss()
   loss_fn = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.00001, weight_decay=1e-4)
+  optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
   scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.95)
 
   losses = []
   accs = []
 
-  epochs = 10
+  epochs = 13
   for epoch in range(epochs):
     print("epoch: {}; lr: {}".format(epoch, scheduler.get_last_lr()[0]))
     epoch_loss = 0
@@ -140,14 +170,14 @@ if __name__ == '__main__':
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()
-      epoch_loss += loss.item()/len(train_ldr)
-
-      pbar.set_description("    loss: {:.5f}".format(epoch_loss))
+      epoch_loss += loss.item()
+      #epoch_loss += loss.item()/len(train_ldr)
+      pbar.set_description(" loss: {:.5f}".format(epoch_loss/(batch_idx + 1)))
       pbar.update()
-    losses.append(epoch_loss)
+    losses.append(epoch_loss/len(train_ldr))
     pbar.close()
     scheduler.step()
-
+  
     pbar = trange(len(test_ldr), ascii=True)
     with torch.no_grad():
       epoch_acc = 0
@@ -158,13 +188,13 @@ if __name__ == '__main__':
         avd_dist = distance_from_point(y, labels)
         #y = torch.argmax(torch.exp(y), dim=1)
         #epoch_acc += (1-torch.count_nonzero(y-labels).item() / len(batch))/len(test_ldr)
-        epoch_acc += np.mean(avd_dist)/len(test_ldr)
-        pbar.set_description("test:  epoch: {:2d};  acc: {:.5f}".format(epoch, epoch_acc))
+        epoch_acc += np.mean(avd_dist)
+        pbar.set_description("test:  epoch: {:2d};  acc: {:.5f}".format(epoch, (epoch_acc/(batch_idx + 1))))
         pbar.update()
     accs.append(epoch_acc)
     pbar.close()
-  torch.save(model, './data/model_classification')
-"""
+  torch.save(model, './data/norwai_zone')
+
   import matplotlib.pyplot as plt  
   fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15,5))
   fig.set_facecolor('white')
@@ -174,4 +204,3 @@ if __name__ == '__main__':
   ax2.plot(range(len(accs)), accs, label='accuracy')
   ax2.legend()
   plt.show()
-"""
