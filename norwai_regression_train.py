@@ -29,9 +29,9 @@ tf_test = transforms.Compose([
 
 def get_dataset(full):
   if full:
-    return NSVD('./data', True,  "county", False, transforms=tf_train), NSVD('./data', False,  "county", False, transforms=tf_train)
+    return NSVD('./data', True,  "coords", False, transforms=tf_train), NSVD('./data', False,  "county", False, transforms=tf_train)
   else:
-    return NSVD_B('./data', True,  "county", False, transforms=tf_train), NSVD_B('./data', False,  "county", False, transforms=tf_train)
+    return NSVD_B('./data', True,  "coords", False, transforms=tf_train), NSVD_B('./data', False,  "county", False, transforms=tf_train)
 
 def train_model():
   run = wandb.init(name='distance')
