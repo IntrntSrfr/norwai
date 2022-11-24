@@ -6,8 +6,8 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from util import make_data_folders
-from norwai_regression import NSVDModel, Haversine
-from nsvd import NSVD
+from norwai_models import get_model, Haversine
+from nsvd import NSVD, NSVD_B
 
 make_data_folders()
 
@@ -27,19 +27,28 @@ tf_test = transforms.Compose([
   transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
-train_data = NSVD('./data', True,  "coords", False, transforms=tf_train)
-test_data = NSVD('./data', False,  "coords", False, transforms=tf_test)
+def get_dataset(full):
+  if full:
+    return NSVD('./data', True,  "county", False, transforms=tf_train), NSVD('./data', False,  "county", False, transforms=tf_train)
+  else:
+    return NSVD_B('./data', True,  "county", False, transforms=tf_train), NSVD_B('./data', False,  "county", False, transforms=tf_train)
 
 def train_model():
   run = wandb.init(name='distance')
   print("new run with configs:", wandb.config)
 
+  architecture = wandb.config.architecture
+  pretrained = wandb.config.pretrained
   epochs = wandb.config.epochs
   lr = wandb.config.lr
   lr_decay = wandb.config.lr_decay
   batch_size = wandb.config.batch_size
+  dataset = wandb.config.dataset
 
-  model = NSVDModel()
+  train_data, test_data = get_dataset(dataset == 'full')
+
+  model = get_model(architecture, 2, False, pretrained)
+  assert model is not None, "Input architecture is invalid"
   model = nn.DataParallel(model)
   model.to(device)
   
