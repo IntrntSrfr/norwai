@@ -62,7 +62,7 @@ def set_requires_grad(model: nn.Module, feature_extract: bool):
     for param in model.parameters():
       param.requires_grad = False
 
-def get_model(architecture: str, num_classes: int, feature_extract: bool, use_pretrained=True) -> nn.Module | None:
+def get_model(architecture: str, num_classes: int, feature_extract: bool, use_pretrained=True) -> nn.Module:
   model = None
   
   if architecture == "NSVD":
@@ -86,7 +86,7 @@ def get_model(architecture: str, num_classes: int, feature_extract: bool, use_pr
     set_requires_grad(model, feature_extract)
     model.classifier[6] = nn.Linear(4096, num_classes)
 
-  elif architecture == "EfficientNet":
+  elif architecture == "EfficientNetSmall":
     weights = models.EfficientNet_V2_S_Weights.DEFAULT
     model = models.efficientnet_v2_s(progress=False, weights=weights if use_pretrained else None)
     set_requires_grad(model, feature_extract)
