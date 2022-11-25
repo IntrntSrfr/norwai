@@ -52,6 +52,19 @@ class NSVDModel(nn.Module):
     return sum(p.numel() for p in self.parameters())
 
 
+class Haversine(nn.Module):
+  def __init__(self) -> None:
+    super(Haversine, self).__init__()
+  
+  def forward(self, lat1: torch.Tensor, lng1: torch.Tensor, lat2: torch.Tensor, lng2: torch.Tensor) -> torch.Tensor:
+    lng1, lat1, lng2, lat2 = map(torch.deg2rad, [lng1, lat1, lng2, lat2])
+    dlng = lng2 - lng1
+    dlat = lat2 - lat1
+    a = torch.sin(dlat/2.0)**2 + torch.cos(lat1) * torch.cos(lat2) * torch.sin(dlng/2.0)**2
+    c = 2 * torch.arcsin(torch.sqrt(a))
+    km = 6371 * c
+    return km.mean()
+
 if __name__ == '__main__':
   model = NSVDModel(10)
   print("params:", len(model))
@@ -62,7 +75,7 @@ def set_requires_grad(model: nn.Module, feature_extract: bool):
     for param in model.parameters():
       param.requires_grad = False
 
-def get_model(architecture: str, num_classes: int, feature_extract: bool, use_pretrained=True) -> nn.Module:
+def get_model(architecture: str, num_classes: int, feature_extract: bool, use_pretrained=True):
   model = None
   
   if architecture == "NSVD":
@@ -85,9 +98,16 @@ def get_model(architecture: str, num_classes: int, feature_extract: bool, use_pr
     model = models.vgg19_bn(progress=False, weights=weights if use_pretrained else None)
     set_requires_grad(model, feature_extract)
     model.classifier[6] = nn.Linear(4096, num_classes)
-  elif architecture == "EfficientNetSmall":
+
+  elif architecture == "EfficientNetS":
     weights = models.EfficientNet_V2_S_Weights.DEFAULT
     model = models.efficientnet_v2_s(progress=False, weights=weights if use_pretrained else None)
+    set_requires_grad(model, feature_extract)
+    model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
+  
+  elif architecture == "EfficientNetL":
+    weights = models.EfficientNet_V2_L_Weights.DEFAULT
+    model = models.efficientnet_v2_l(progress=False, weights=weights if use_pretrained else None)
     set_requires_grad(model, feature_extract)
     model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
 

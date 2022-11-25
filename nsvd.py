@@ -50,6 +50,7 @@ class NSVD(Dataset):
       return img, label, row[['lat', 'lng']].to_numpy()[0]
     return img, label, -1
 
+
 class NSVD_B(Dataset):
   def __init__(self, root, train, label, return_coords, transforms=None):
     super(NSVD_B, self).__init__()
@@ -114,7 +115,6 @@ class NSVD_Boxes(Dataset):
     if self.transforms:
       img = self.transforms(img)
     return img, label
-
 
 
 def plot_img(t):

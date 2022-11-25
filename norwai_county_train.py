@@ -6,8 +6,8 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from util import make_data_folders
-from norwai_county import get_model
-from nsvd import NSVD_B, IDX2COUNTY
+from norwai_models import get_model
+from nsvd import NSVD, NSVD_B, IDX2COUNTY
 
 make_data_folders()
 
@@ -27,21 +27,28 @@ tf_test = transforms.Compose([
   transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
 
-train_data = NSVD_B('./data', True,  "county", False, transforms=tf_train)
-test_data = NSVD_B('./data', False,  "county", False, transforms=tf_test)
+#train_data = NSVD_B('./data', True,  "county", False, transforms=tf_train)
+#test_data = NSVD_B('./data', False,  "county", False, transforms=tf_test)
+#
+#default_config = {
+#  'architecture': 'EfficientNet',
+#  'pretrained': True,
+#  'dataset': 'balanced',
+#  'epochs': 10,
+#  'lr': 0.001,
+#  'lr_decay': 0.98,
+#  'batch_size': 32,
+#}
 
-default_config = {
-  'architecture': 'EfficientNet',
-  'pretrained': True,
-  'dataset': 'balanced',
-  'epochs': 10,
-  'lr': 0.001,
-  'lr_decay': 0.95,
-  'batch_size': 32,
-}
+def get_dataset(full):
+  if full:
+    return NSVD('./data', True,  "county", False, transforms=tf_train), NSVD('./data', False,  "county", False, transforms=tf_train)
+  else:
+    return NSVD_B('./data', True,  "county", False, transforms=tf_train), NSVD_B('./data', False,  "county", False, transforms=tf_train)
+
 
 def train_model():
-  run = wandb.init(name='county', project='norwai', entity='norwai', config=default_config)
+  run = wandb.init(name='county')#, project='norwai', entity='norwai', config=default_config)
   print("new run with configs:", wandb.config)
 
   architecture = wandb.config.architecture
@@ -50,6 +57,9 @@ def train_model():
   lr = wandb.config.lr
   lr_decay = wandb.config.lr_decay
   batch_size = wandb.config.batch_size
+  dataset = wandb.config.dataset
+
+  train_data, test_data = get_dataset(dataset == 'full')
 
   model = get_model(architecture, 10, False, pretrained)
   assert model is not None, "Input architecture is invalid"
