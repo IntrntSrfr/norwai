@@ -1,3 +1,4 @@
+# File used for hyper parameter training on wandb
 import pandas as pd
 import torch
 from pyproj import Proj, transform
@@ -51,13 +52,10 @@ def centroid(points):
   return (sum(x) / len(points), sum(y) / len(points))
 
 def distance_from_point(y, labels, amt = 3): 
-  #grad_fn = y.grad_fn
   dist = []
-  #read n_list from n_list.csv
   n_list = pd.read_csv('data/NSVD/zone_boxes{}.csv'.format(wandb.config.zone_size))
 
   BOX_INDEXES =  [43, 75, 22, 11, 31, 64, 77, 23, 33, 53, 21, 54, 76, 32, 42, 86, 12, 87] if wandb.config.zone_size == 'x200' else [14, 27, 7, 13, 20, 28, 8]
-  #print(len(y))
   for i in range(len(y)):
     # Get the four best y values with in each batch
     y_ = y[i].topk(amt, dim=0)[1]
@@ -71,7 +69,6 @@ def distance_from_point(y, labels, amt = 3):
     for _, row in box_cords.iterrows():
       box_centers.append(centroid([row['1'], row['0']]))
     
-    #print(torch.softmax(y[i], dim=0).detach().cpu().numpy())
     percentages =  torch.softmax(y[i], dim=0).detach().cpu().numpy()
     #get percentage of each box selected
     percentages = percentages[[y_[idx] for idx in range(len(y_))]]
@@ -79,14 +76,9 @@ def distance_from_point(y, labels, amt = 3):
     percentages = percentages / percentages.sum()
 
     estimated_point = weighted_centroid(box_centers,percentages)[0]
-    #print(estimated_point)
     esitmated_point = transform(zone34N, gps, estimated_point[0], estimated_point[1])
     estimated_point = (esitmated_point[1], esitmated_point[0])
-    #y[i] = geopy.distance.distance(estimated_point, (lat, lng)).km
     dist.append(geopy.distance.geodesic((lat, lng), estimated_point).km)
-
-  #res = torch.mean(torch.tensor(dist))#.to(device)
-  #res.grad_fn = grad_fn
   return dist
 
 tf_train = transforms.Compose([
@@ -103,8 +95,6 @@ tf_test = transforms.Compose([
 ])
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 
 def train_model():
     run = wandb.init(name="zone")
