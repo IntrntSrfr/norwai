@@ -14,11 +14,9 @@ def image(i):
     img = pygame.image.load("./data/images/{}".format(files[i])).convert()
     screen.blit(img, (250,50))
 
-#find index of 00627_1.jpg
-i = 13926 - 1
-i_new = 13926 - 1
+i = 0
+i_new = 0
 
-#Start real world timer
 start = time.time()
 end = None
 image(i)
@@ -33,10 +31,6 @@ while (status):
             status = False
             print("Current image: {}".format(files[i]))
             print("New start index is: {}".format(i_new))
-
-
-        #Display the average time
-
 
         if e.type == pygame.KEYDOWN:
             if e.key == pygame.K_SPACE or e.key == 8:
@@ -55,5 +49,4 @@ while (status):
                 image(i)
                 pygame.display.flip()
  
-# deactivates the pygame library
 pygame.quit()
