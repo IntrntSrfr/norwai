@@ -30,15 +30,15 @@ tf_test = transforms.Compose([
 #train_data = NSVD_B('./data', True,  "county", False, transforms=tf_train)
 #test_data = NSVD_B('./data', False,  "county", False, transforms=tf_test)
 #
-#default_config = {
-#  'architecture': 'EfficientNet',
-#  'pretrained': True,
-#  'dataset': 'balanced',
-#  'epochs': 10,
-#  'lr': 0.001,
-#  'lr_decay': 0.98,
-#  'batch_size': 32,
-#}
+default_config = {
+  'architecture': 'EfficientNet',
+  'pretrained': True,
+  'dataset': 'full',
+  'epochs': 30,
+  'lr': 0.0001,
+  'lr_decay': 0.95,
+  'batch_size': 32,
+}
 
 def get_dataset(full):
   if full:
@@ -131,6 +131,8 @@ def train_model():
 
     scheduler.step()
   run.finish()
+
+  #torch.save(model, './data/trained_models/distance')
 
 if __name__ == '__main__':
   train_model()
