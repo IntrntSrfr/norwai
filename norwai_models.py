@@ -99,7 +99,13 @@ def get_model(architecture: str, num_classes: int, feature_extract: bool, use_pr
     set_requires_grad(model, feature_extract)
     model.classifier[6] = nn.Linear(4096, num_classes)
 
-  elif architecture == "EfficientNet":
+  elif architecture == "EfficientNetS":
+    weights = models.EfficientNet_V2_S_Weights.DEFAULT
+    model = models.efficientnet_v2_s(progress=False, weights=weights if use_pretrained else None)
+    set_requires_grad(model, feature_extract)
+    model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
+  
+  elif architecture == "EfficientNetL":
     weights = models.EfficientNet_V2_L_Weights.DEFAULT
     model = models.efficientnet_v2_l(progress=False, weights=weights if use_pretrained else None)
     set_requires_grad(model, feature_extract)

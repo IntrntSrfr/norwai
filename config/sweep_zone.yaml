@@ -1,0 +1,22 @@
+entity: xkijux
+project: norwai-2
+program: norwai_zone_train.py
+method: grid
+metric:
+  name: test_loss
+  goal: minimize
+parameters:
+  zone_size: 
+    values: [x200 ,x400]
+  epochs:
+    values: [13]
+  data_normalization:
+    values: [min, avg]
+  lr:
+    values: [0.01, 0.001, 0.0001] #0.01
+  lr_decay:
+    values: [0.95]
+  batch_size:
+    values: [32] #64
+  architecture: 
+    values: [NSVD, ResNet152, vgg19, EfficientNet] 

@@ -86,13 +86,20 @@ class NSVD_B(Dataset):
 
 
 class NSVD_Boxes(Dataset):
-  def __init__(self, root, transforms=None, train=True) -> None:
+  def __init__(self, root, transforms=None, zone_size="x200", data_normalization="min",  train=True) -> None:
     super(NSVD_Boxes, self).__init__()
     self.path = pathlib.Path(root) / 'NSVD' 
-    self.df = pd.read_csv(self.path / 'data_boxes.csv')
+    self.df = pd.read_csv(self.path / 'data_boxes{}.csv'.format(zone_size))
+    
+    # Group boxes
     self.df = self.df.groupby('box_index')
-    self.df = self.df.apply(lambda x: x.sample(int(self.df.size().mean()), replace=True).reset_index(drop=True))
+    if data_normalization == 'min': 
+      self.data_normalization = self.df.size().min() 
+    else:
+      self.data_normalization = self.df.size().mean() 
+    self.df = self.df.apply(lambda x: x.sample(int(self.data_normalization), replace=True).reset_index(drop=True))
     self.files = list((self.path / ('train' if train else 'test')).glob('*.jpg'))
+    
     #Remove all files that are not in df
     self.files = [f for f in self.files if f.name in self.df['filename'].values]
     self.transforms = transforms
