@@ -29,7 +29,7 @@ tf_test = transforms.Compose([
 
 #train_data = NSVD_B('./data', True,  "county", False, transforms=tf_train)
 #test_data = NSVD_B('./data', False,  "county", False, transforms=tf_test)
-#
+
 default_config = {
   'architecture': 'EfficientNet',
   'pretrained': True,
