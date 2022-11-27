@@ -35,7 +35,11 @@ They have an accuracy difference of 1.2%, and similar metrics in terms of loss.
 
 ### Zone
 
+[`norwai_zone_train.py`](norwai_zone_train.py) contains training code with wandb. This approach was tested using different models and county sizes. We tested both 400km^2 and 200km^2. The models that did the best was vgg19 and EfficientNet (small) with an accuracy of around 300km. 
+
 [`norwai_zone.py`](norwai_zone.py) contains training code.
+
+[`norwai_zone_test.ipynb`](norwai_zone_test.ipynb) isa a notebook for testing the zone approach.
 
 ## Other files and folders
 
