@@ -15,7 +15,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Parameters
 architecture = 'EfficientNetL'
 pretrained = True
-epochs = 30
+epochs = 13
 lr = 0.0001
 lr_decay = 0.95
 batch_size = 32
