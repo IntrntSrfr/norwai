@@ -82,4 +82,4 @@ for epoch in range(epochs):
   scheduler.step()
 
 #Save the model
-torch.save(model, './data/norwai_regression.model')
+torch.save(model, './data/trained_models/norwai_regression.model')
