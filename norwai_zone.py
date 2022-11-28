@@ -149,7 +149,7 @@ if __name__ == '__main__':
     pbar.close()
 
   # Save the model 
-  torch.save(model, './data/norwai_zone')
+  torch.save(model, './data/trained_models/norwai_zone.model')
 
   import matplotlib.pyplot as plt  
   fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15,5))
