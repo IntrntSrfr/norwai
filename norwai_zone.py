@@ -16,7 +16,8 @@ zone34N = Proj(init='epsg:23034')
 #Box indexes used to get the original box coordinates
 BOX_INDEXES = [43, 75, 22, 11, 31, 64, 77, 23, 33, 53, 21, 54, 76, 32, 42, 74, 86, 12, 87, 85]
 EPOCHS = 13
-MODEL = "NSVD"
+MODEL = "EfficientNetS"
+LR = 0.001
 DATA_NORM = "avg" # "avg" or "min"
 
 # Calculate centroid by creating a line and selecting the point x% into that line.
@@ -110,7 +111,7 @@ if __name__ == '__main__':
   model.to(device)
   
   loss_fn = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
+  optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
   scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 0.95)
   
   losses = []
